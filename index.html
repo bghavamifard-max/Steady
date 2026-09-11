@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Steady" />
+<meta name="theme-color" content="#EDEEE7" />
+<link rel="apple-touch-icon" href="icon.png" />
+<title>Steady — daily check-in</title>
+<style>
+  :root{
+    --bg:#EDEEE7; --surface:#FAF9F5; --surface-2:#E4E5DC;
+    --ink:#2B2E2A; --muted:#7C7B70; --line:#DCDACD;
+    --accent:#3F6355; --accent-ink:#F4F7F5;
+    --amber-bg:#F6EBDA; --amber-ink:#7A4A17; --amber-line:#D9A85D;
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+    padding-bottom:calc(78px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:520px; margin:0 auto; padding:0 18px;}
+  header.top{
+    padding:calc(20px + env(safe-area-inset-top)) 18px 14px;
+    display:flex; align-items:baseline; justify-content:space-between;
+  }
+  header.top h1{font-family:var(--serif); font-weight:400; font-size:1.5rem; margin:0;}
+  header.top .date{color:var(--muted); font-size:0.85rem;}
+  section.view{display:none; padding:4px 0 28px;}
+  section.view.active{display:block;}
+  h2.section-title{font-family:var(--serif); font-weight:400; font-size:1.15rem; margin:22px 0 10px;}
+  h2.section-title:first-child{margin-top:4px;}
+  p.lead{color:var(--muted); font-size:0.92rem; line-height:1.5; margin:0 0 16px;}
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:14px;
+  }
+  label.field-label{display:block; font-size:0.82rem; color:var(--muted); margin:0 0 6px;}
+  textarea, input[type=text]{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-family:var(--sans); font-size:0.98rem; background:var(--surface); color:var(--ink);
+    resize:vertical;
+  }
+  textarea:focus, input[type=text]:focus, select:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  select{
+    width:100%; border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+    font-family:var(--sans); font-size:0.98rem; background:var(--surface); color:var(--ink);
+  }
+  .field{margin-bottom:14px;}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--accent); color:var(--accent-ink); border:none; border-radius:10px;
+    padding:11px 18px; font-size:0.95rem; font-family:var(--sans); cursor:pointer;
+  }
+  .btn.secondary{background:transparent; color:var(--accent); border:1px solid var(--accent);}
+  .btn.quiet{background:transparent; color:var(--muted); border:1px solid var(--line); padding:7px 12px; font-size:0.85rem;}
+  .btn.full{width:100%;}
+  .row{display:flex; gap:8px;}
+  .scale{display:flex; gap:6px;}
+  .scale button{
+    flex:1; padding:10px 0; border-radius:10px; border:1px solid var(--line);
+    background:var(--surface); color:var(--ink); font-size:0.95rem; cursor:pointer;
+  }
+  .scale button.selected{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  .mood-caption{display:flex; justify-content:space-between; color:var(--muted); font-size:0.75rem; margin-top:6px;}
+  .item-row{border-top:1px solid var(--line); padding:14px 0;}
+  .item-row:first-of-type{border-top:none; padding-top:0;}
+  .item-row .item-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .item-num{color:var(--muted); font-size:0.82rem;}
+  .item-name{font-size:0.98rem;}
+  .safety-note{
+    background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--amber-ink);
+    border-radius:10px; padding:12px 14px; margin-top:10px; font-size:0.9rem; line-height:1.5;
+  }
+  .safety-note a{color:var(--amber-ink);}
+  .total-banner{
+    display:flex; justify-content:space-between; align-items:baseline;
+    background:var(--surface-2); border-radius:10px; padding:14px 16px; margin:14px 0;
+  }
+  .total-banner .num{font-family:var(--serif); font-size:1.8rem;}
+  .entry{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:10px;}
+  .entry .meta{display:flex; justify-content:space-between; color:var(--muted); font-size:0.78rem; margin-bottom:6px;}
+  .entry .body{font-size:0.94rem; white-space:pre-wrap; line-height:1.45;}
+  .entry .actions{margin-top:10px; display:flex; gap:8px;}
+  .activity-chip{
+    display:inline-flex; align-items:center; gap:6px; background:var(--surface-2);
+    border-radius:999px; padding:5px 10px; font-size:0.82rem; margin:0 6px 6px 0;
+  }
+  .empty{color:var(--muted); font-size:0.9rem; text-align:center; padding:26px 10px;}
+  .distortion-hint{font-size:0.82rem; color:var(--muted); margin-top:6px; line-height:1.4;}
+  nav.tabbar{
+    position:fixed; left:0; right:0; bottom:0; background:var(--surface);
+    border-top:1px solid var(--line); display:flex;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav.tabbar button{
+    flex:1; background:none; border:none; padding:12px 4px 10px; font-family:var(--sans);
+    font-size:0.74rem; color:var(--muted); cursor:pointer;
+  }
+  nav.tabbar button .dot{display:block; width:6px; height:6px; border-radius:50%; background:transparent; margin:0 auto 5px;}
+  nav.tabbar button.active{color:var(--ink);}
+  nav.tabbar button.active .dot{background:var(--accent);}
+  .chart-wrap{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:16px;}
+  .chart-wrap h3{font-family:var(--serif); font-weight:400; font-size:1rem; margin:0 0 10px;}
+  svg.chart{width:100%; height:auto; display:block;}
+  .data-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+  .confirm-bar{display:flex; gap:8px; align-items:center; margin-top:8px;}
+  .small-note{font-size:0.78rem; color:var(--muted); margin-top:8px; line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Steady</h1>
+    <span class="date" id="headerDate"></span>
+  </header>
+
+  <section class="view" id="view-today">
+    <h2 class="section-title">How's today</h2>
+    <div class="card">
+      <div class="field">
+        <label class="field-label">Overall, today</label>
+        <div class="scale" id="moodScale" data-testid="mood-scale"></div>
+        <div class="mood-caption"><span>1 · a hard day</span><span>5 · a great day</span></div>
+      </div>
+      <div class="field">
+        <label class="field-label">Notes (private, stays on this device)</label>
+        <textarea id="dailyNote" rows="3" placeholder="Anything worth remembering about today…"></textarea>
+      </div>
+      <div class="field">
+        <label class="field-label">Add an activity</label>
+        <div class="row">
+          <input type="text" id="activityText" placeholder="e.g. walk, call with a friend" />
+          <select id="activityTag" style="max-width:120px;">
+            <option value="pleasant">pleasant</option>
+            <option value="duty">duty</option>
+            <option value="neutral">neutral</option>
+          </select>
+        </div>
+        <button class="btn secondary full" id="addActivityBtn" style="margin-top:8px;">Add activity</button>
+        <div id="activityChips" style="margin-top:10px;"></div>
+      </div>
+      <button class="btn full" id="saveDailyBtn" data-testid="save-daily">Save today's entry</button>
+    </div>
+    <h2 class="section-title">Past entries</h2>
+    <div id="dailyList"></div>
+  </section>
+
+  <section class="view" id="view-weekly">
+    <h2 class="section-title">Weekly check-in</h2>
+    <p class="lead">Enter today's scores the same way you do on your weekly sheet — 0 to 3 per item. Nothing here is diagnostic; it's just your own numbers, for you and your therapist.</p>
+    <div class="total-banner">
+      <span>This entry's total</span>
+      <span class="num" id="liveTotal" data-testid="live-total">0</span>
+    </div>
+    <div class="card" id="screeningItems" data-testid="screening-items"></div>
+    <button class="btn full" id="saveScreeningBtn" data-testid="save-screening" style="margin-top:14px;">Save this week's entry</button>
+    <h2 class="section-title">History</h2>
+    <div id="screeningList"></div>
+  </section>
+
+  <section class="view" id="view-thoughts">
+    <h2 class="section-title">Thought record</h2>
+    <p class="lead">Catch the automatic thought, check it against the evidence, write the tested response — once, while calm.</p>
+    <div class="card">
+      <div class="field"><label class="field-label">1. Situation / trigger</label><input type="text" id="tTrigger" /></div>
+      <div class="field"><label class="field-label">2. Automatic thought</label><input type="text" id="tThought" /></div>
+      <div class="field">
+        <label class="field-label">3. Distortion (optional)</label>
+        <select id="tDistortion"><option value="">— none selected —</option></select>
+        <div class="distortion-hint" id="distortionHint"></div>
+      </div>
+      <div class="field"><label class="field-label">4. Evidence for the thought</label><input type="text" id="tFor" /></div>
+      <div class="field"><label class="field-label">5. Evidence against it</label><input type="text" id="tAgainst" /></div>
+      <div class="field"><label class="field-label">6. Balanced alternative thought</label><input type="text" id="tBalanced" /></div>
+      <div class="field"><label class="field-label">7. Action you'll actually take</label><input type="text" id="tAction" /></div>
+      <button class="btn full" id="saveThoughtBtn" data-testid="save-thought">Save thought record</button>
+    </div>
+    <h2 class="section-title">Past records</h2>
+    <div id="thoughtList"></div>
+  </section>
+
+  <section class="view" id="view-trends">
+    <h2 class="section-title">Trends</h2>
+    <div class="chart-wrap">
+      <h3>Weekly check-in total</h3>
+      <div id="screeningChart"></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Daily mood</h3>
+      <div id="moodChart"></div>
+    </div>
+    <h2 class="section-title">Your data</h2>
+    <div class="card">
+      <p class="small-note" style="margin-top:0;">Everything is stored only in this browser, on this device — nothing is sent anywhere. Back it up as a file if you want a copy, or move it to another device.</p>
+      <div class="data-actions">
+        <button class="btn secondary" id="exportBtn">Export backup</button>
+        <label class="btn secondary" for="importFile" style="cursor:pointer;">Import backup</label>
+        <input type="file" id="importFile" accept="application/json" style="display:none;" />
+        <button class="btn quiet" id="clearBtn">Clear all data</button>
+      </div>
+      <div id="clearConfirm" style="display:none;" class="confirm-bar">
+        <span class="small-note" style="margin:0;">Delete everything? This can't be undone.</span>
+        <button class="btn quiet" id="clearYes">Yes, delete</button>
+        <button class="btn quiet" id="clearNo">Cancel</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabbar" data-testid="tabbar">
+  <button data-tab="today" class="active"><span class="dot"></span>Today</button>
+  <button data-tab="weekly"><span class="dot"></span>Weekly</button>
+  <button data-tab="thoughts"><span class="dot"></span>Thoughts</button>
+  <button data-tab="trends"><span class="dot"></span>Trends</button>
+</nav>
+
+<script>
+/* ===== logic.js content — kept in sync with the standalone tested copy ===== */
+const SCREEN_ITEM_COUNT = 21;
+const SENSITIVE_ITEM_INDEX = 8;
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function todayISO(d = new Date()) { const tz = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - tz).toISOString().slice(0, 10); }
+function clampScore(n) { n = Number(n); if (Number.isNaN(n)) return 0; return Math.max(0, Math.min(3, Math.round(n))); }
+function validScreeningScores(scores) { return Array.isArray(scores) && scores.length === SCREEN_ITEM_COUNT && scores.every((s) => Number.isInteger(clampScore(s)) && s >= 0 && s <= 3); }
+function computeTotal(scores) { if (!Array.isArray(scores)) return 0; return scores.reduce((sum, s) => sum + clampScore(s), 0); }
+function needsSafetyNote(scores) { return Array.isArray(scores) && clampScore(scores[SENSITIVE_ITEM_INDEX]) >= 1; }
+function addEntry(list, entry) { const withMeta = Object.assign({ id: uid(), createdAt: new Date().toISOString() }, entry); return [...list, withMeta]; }
+function updateEntry(list, id, patch) { return list.map((item) => (item.id === id ? Object.assign({}, item, patch, { updatedAt: new Date().toISOString() }) : item)); }
+function removeEntry(list, id) { return list.filter((item) => item.id !== id); }
+function sortByDateDesc(list, dateKey = "date") { return [...list].sort((a, b) => (a[dateKey] < b[dateKey] ? 1 : a[dateKey] > b[dateKey] ? -1 : 0)); }
+function sortByDateAsc(list, dateKey = "date") { return [...list].sort((a, b) => (a[dateKey] > b[dateKey] ? 1 : a[dateKey] < b[dateKey] ? -1 : 0)); }
+function screeningTrendPoints(screenings) { return sortByDateAsc(screenings).map((s) => ({ date: s.date, total: computeTotal(s.scores) })); }
+function moodTrendPoints(dailyLogs) { return sortByDateAsc(dailyLogs).filter((d) => typeof d.mood === "number").map((d) => ({ date: d.date, mood: d.mood })); }
+function makeStore(storageImpl) {
+  return {
+    load(key, fallback) { try { const raw = storageImpl.getItem(key); if (raw == null) return fallback; return JSON.parse(raw); } catch (e) { return fallback; } },
+    save(key, value) { try { storageImpl.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; } },
+  };
+}
+const SCREEN_LABELS = ["Mood","Outlook on the future","View of the past","Enjoyment","Guilt","Feeling punished","Self-regard","Self-criticism","Difficult thoughts","Tearfulness","Restlessness","Interest in others","Decision-making","Sense of worth","Energy","Sleep","Irritability","Appetite","Concentration","Fatigue","Interest (intimacy)"];
+const DISTORTIONS = [
+  { key: "all-or-nothing", label: "All-or-nothing thinking", hint: "Seeing something as a total success or total failure, no middle ground." },
+  { key: "overgeneralizing", label: "Overgeneralizing", hint: "One bad moment becomes \"this always happens.\"" },
+  { key: "mental-filter", label: "Mental filter", hint: "One negative detail colors everything else." },
+  { key: "discounting-positive", label: "Discounting the positive", hint: "Good things \"don't count.\"" },
+  { key: "jumping-to-conclusions", label: "Jumping to conclusions", hint: "Assuming you know what others think, or how things will turn out, without checking." },
+  { key: "catastrophizing", label: "Catastrophizing", hint: "Expecting the worst-case outcome." },
+  { key: "emotional-reasoning", label: "Emotional reasoning", hint: "\"I feel it, so it must be true.\"" },
+  { key: "should-statements", label: "\"Should\" statements", hint: "Rigid rules for yourself or others that create pressure or guilt." },
+  { key: "labeling", label: "Labeling", hint: "One mistake becomes a fixed label about who you are." },
+  { key: "personalizing", label: "Personalizing", hint: "Taking responsibility for something that wasn't fully yours to carry." },
+];
+/* ===== end shared logic ===== */
+
+const store = makeStore(window.localStorage);
+const state = {
+  dailyLogs: store.load("steady.dailyLogs", []),
+  screenings: store.load("steady.screenings", []),
+  thoughts: store.load("steady.thoughts", []),
+  draftActivities: [],
+  draftMood: null,
+};
+
+function persist() {
+  store.save("steady.dailyLogs", state.dailyLogs);
+  store.save("steady.screenings", state.screenings);
+  store.save("steady.thoughts", state.thoughts);
+}
+
+function $(sel, root = document) { return root.querySelector(sel); }
+function $all(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function fmtDate(iso) { const d = new Date(iso + "T00:00:00"); return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+
+/* ---------- tabs ---------- */
+function setActiveTab(name) {
+  $all("nav.tabbar button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  $all("section.view").forEach((v) => v.classList.toggle("active", v.id === "view-" + name));
+}
+$all("nav.tabbar button").forEach((btn) => btn.addEventListener("click", () => setActiveTab(btn.dataset.tab)));
+
+/* ---------- header date ---------- */
+$("#headerDate").textContent = fmtDate(todayISO());
+
+/* ---------- Today view ---------- */
+function renderMoodScale() {
+  const box = $("#moodScale");
+  box.innerHTML = "";
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = i;
+    if (state.draftMood === i) b.classList.add("selected");
+    b.addEventListener("click", () => { state.draftMood = i; renderMoodScale(); });
+    box.appendChild(b);
+  }
+}
+function renderActivityChips() {
+  const box = $("#activityChips");
+  box.innerHTML = state.draftActivities.map((a, i) =>
+    `<span class="activity-chip">${esc(a.text)} · ${esc(a.tag)} <button data-i="${i}" class="rm-activity" style="border:none;background:none;color:var(--muted);cursor:pointer;">×</button></span>`
+  ).join("");
+  $all(".rm-activity", box).forEach((btn) => btn.addEventListener("click", () => {
+    state.draftActivities.splice(Number(btn.dataset.i), 1);
+    renderActivityChips();
+  }));
+}
+$("#addActivityBtn").addEventListener("click", () => {
+  const text = $("#activityText").value.trim();
+  if (!text) return;
+  state.draftActivities.push({ text, tag: $("#activityTag").value });
+  $("#activityText").value = "";
+  renderActivityChips();
+});
+$("#saveDailyBtn").addEventListener("click", () => {
+  const date = todayISO();
+  const note = $("#dailyNote").value.trim();
+  const existing = state.dailyLogs.find((d) => d.date === date);
+  const payload = { date, mood: state.draftMood, note, activities: state.draftActivities.slice() };
+  if (existing) state.dailyLogs = updateEntry(state.dailyLogs, existing.id, payload);
+  else state.dailyLogs = addEntry(state.dailyLogs, payload);
+  persist();
+  state.draftActivities = []; state.draftMood = null;
+  $("#dailyNote").value = "";
+  renderMoodScale(); renderActivityChips(); renderDailyList(); renderTrends();
+});
+function renderDailyList() {
+  const box = $("#dailyList");
+  const list = sortByDateDesc(state.dailyLogs);
+  if (!list.length) { box.innerHTML = '<div class="empty">No entries yet — today\'s is a good place to start.</div>'; return; }
+  box.innerHTML = list.map((d) => `
+    <div class="entry" data-id="${d.id}">
+      <div class="meta"><span>${fmtDate(d.date)}</span><span>${d.mood ? "mood " + d.mood + "/5" : ""}</span></div>
+      <div class="body">${esc(d.note) || "<span style=color:var(--muted)>No notes</span>"}</div>
+      ${(d.activities||[]).length ? '<div style="margin-top:8px;">' + d.activities.map(a=>`<span class="activity-chip">${esc(a.text)} · ${esc(a.tag)}</span>`).join("") + '</div>' : ""}
+      <div class="actions"><button class="btn quiet rm-daily" data-id="${d.id}">Delete</button></div>
+    </div>`).join("");
+  $all(".rm-daily", box).forEach((btn) => btn.addEventListener("click", () => {
+    state.dailyLogs = removeEntry(state.dailyLogs, btn.dataset.id); persist(); renderDailyList(); renderTrends();
+  }));
+}
+
+/* ---------- Weekly screening view ---------- */
+let draftScores = new Array(SCREEN_ITEM_COUNT).fill(0);
+function renderScreeningItems() {
+  const box = $("#screeningItems");
+  box.innerHTML = SCREEN_LABELS.map((label, i) => `
+    <div class="item-row">
+      <div class="item-head"><span class="item-num">${i+1}.</span><span class="item-name">${esc(label)}</span></div>
+      <div class="scale" data-item="${i}">
+        ${[0,1,2,3].map(v => `<button type="button" data-v="${v}" class="${draftScores[i]===v?"selected":""}">${v}</button>`).join("")}
+      </div>
+      ${(i===SENSITIVE_ITEM_INDEX && needsSafetyNote(draftScores)) ? `
+        <div class="safety-note">If this feels heavy or urgent right now, please reach out: <strong>113 Zelfmoordpreventie</strong> — call 113 or the free line 0800-0113, 24/7, or chat at <a href="https://113.nl" target="_blank" rel="noopener">113.nl</a>. Worth mentioning at your next session too.</div>
+      ` : ""}
+    </div>`).join("");
+  $all(".scale", box).forEach((scale) => {
+    $all("button", scale).forEach((btn) => btn.addEventListener("click", () => {
+      draftScores[Number(scale.dataset.item)] = Number(btn.dataset.v);
+      renderScreeningItems();
+      $("#liveTotal").textContent = computeTotal(draftScores);
+    }));
+  });
+  $("#liveTotal").textContent = computeTotal(draftScores);
+}
+$("#saveScreeningBtn").addEventListener("click", () => {
+  const date = todayISO();
+  const existing = state.screenings.find((s) => s.date === date);
+  const payload = { date, scores: draftScores.slice() };
+  if (existing) state.screenings = updateEntry(state.screenings, existing.id, payload);
+  else state.screenings = addEntry(state.screenings, payload);
+  persist();
+  draftScores = new Array(SCREEN_ITEM_COUNT).fill(0);
+  renderScreeningItems(); renderScreeningList(); renderTrends();
+});
+function renderScreeningList() {
+  const box = $("#screeningList");
+  const list = sortByDateDesc(state.screenings);
+  if (!list.length) { box.innerHTML = '<div class="empty">No weekly entries yet.</div>'; return; }
+  box.innerHTML = list.map((s) => `
+    <div class="entry" data-id="${s.id}">
+      <div class="meta"><span>${fmtDate(s.date)}</span><span>total ${computeTotal(s.scores)}</span></div>
+      <div class="actions"><button class="btn quiet rm-screen" data-id="${s.id}">Delete</button></div>
+    </div>`).join("");
+  $all(".rm-screen", box).forEach((btn) => btn.addEventListener("click", () => {
+    state.screenings = removeEntry(state.screenings, btn.dataset.id); persist(); renderScreeningList(); renderTrends();
+  }));
+}
+
+/* ---------- Thought log view ---------- */
+function populateDistortionSelect() {
+  const sel = $("#tDistortion");
+  DISTORTIONS.forEach((d) => { const o = document.createElement("option"); o.value = d.key; o.textContent = d.label; sel.appendChild(o); });
+  sel.addEventListener("change", () => {
+    const found = DISTORTIONS.find((d) => d.key === sel.value);
+    $("#distortionHint").textContent = found ? found.hint : "";
+  });
+}
+$("#saveThoughtBtn").addEventListener("click", () => {
+  const fields = { trigger: $("#tTrigger").value.trim(), thought: $("#tThought").value.trim(), distortion: $("#tDistortion").value, evidenceFor: $("#tFor").value.trim(), evidenceAgainst: $("#tAgainst").value.trim(), balanced: $("#tBalanced").value.trim(), action: $("#tAction").value.trim() };
+  if (!fields.trigger && !fields.thought) return;
+  state.thoughts = addEntry(state.thoughts, Object.assign({ date: todayISO() }, fields));
+  persist();
+  ["tTrigger","tThought","tFor","tAgainst","tBalanced","tAction"].forEach((id) => $("#"+id).value = "");
+  $("#tDistortion").value = ""; $("#distortionHint").textContent = "";
+  renderThoughtList();
+});
+function renderThoughtList() {
+  const box = $("#thoughtList");
+  const list = sortByDateDesc(state.thoughts);
+  if (!list.length) { box.innerHTML = '<div class="empty">No thought records yet.</div>'; return; }
+  box.innerHTML = list.map((t) => {
+    const dist = DISTORTIONS.find((d) => d.key === t.distortion);
+    return `<div class="entry" data-id="${t.id}">
+      <div class="meta"><span>${fmtDate(t.date)}</span><span>${dist ? esc(dist.label) : ""}</span></div>
+      <div class="body"><strong>Trigger:</strong> ${esc(t.trigger)||"—"}<br/><strong>Automatic thought:</strong> ${esc(t.thought)||"—"}<br/><strong>Balanced thought:</strong> ${esc(t.balanced)||"—"}<br/><strong>Action:</strong> ${esc(t.action)||"—"}</div>
+      <div class="actions"><button class="btn quiet rm-thought" data-id="${t.id}">Delete</button></div>
+    </div>`;
+  }).join("");
+  $all(".rm-thought", box).forEach((btn) => btn.addEventListener("click", () => {
+    state.thoughts = removeEntry(state.thoughts, btn.dataset.id); persist(); renderThoughtList();
+  }));
+}
+
+/* ---------- Trends (simple hand-drawn SVG line charts, no dependencies) ---------- */
+function lineChartSVG(points, opts) {
+  const { width = 460, height = 160, min = 0, max = 10, valueKey = "value" } = opts;
+  const pad = { l: 30, r: 12, t: 12, b: 24 };
+  const w = width - pad.l - pad.r, h = height - pad.t - pad.b;
+  if (!points.length) return '<div class="empty">Not enough entries yet to chart.</div>';
+  const n = points.length;
+  const x = (i) => pad.l + (n === 1 ? w/2 : (i/(n-1)) * w);
+  const y = (v) => pad.t + h - ((v - min) / (max - min || 1)) * h;
+  const path = points.map((p,i) => `${i===0?"M":"L"}${x(i).toFixed(1)},${y(p[valueKey]).toFixed(1)}`).join(" ");
+  const dots = points.map((p,i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p[valueKey]).toFixed(1)}" r="3" fill="var(--accent)" />`).join("");
+  const firstLabel = points[0] ? fmtDate(points[0].date) : "";
+  const lastLabel = points[n-1] ? fmtDate(points[n-1].date) : "";
+  return `<svg class="chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t+h}" stroke="var(--line)" />
+    <line x1="${pad.l}" y1="${pad.t+h}" x2="${pad.l+w}" y2="${pad.t+h}" stroke="var(--line)" />
+    <text x="2" y="${pad.t+6}" font-size="10" fill="var(--muted)">${max}</text>
+    <text x="2" y="${pad.t+h}" font-size="10" fill="var(--muted)">${min}</text>
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" />
+    ${dots}
+    <text x="${pad.l}" y="${height-4}" font-size="10" fill="var(--muted)">${firstLabel}</text>
+    <text x="${pad.l+w}" y="${height-4}" font-size="10" fill="var(--muted)" text-anchor="end">${lastLabel}</text>
+  </svg>`;
+}
+function renderTrends() {
+  const sPts = screeningTrendPoints(state.screenings);
+  $("#screeningChart").innerHTML = lineChartSVG(sPts, { min: 0, max: 63, valueKey: "total" });
+  const mPts = moodTrendPoints(state.dailyLogs);
+  $("#moodChart").innerHTML = lineChartSVG(mPts, { min: 1, max: 5, valueKey: "mood" });
+}
+
+/* ---------- data export / import / clear ---------- */
+$("#exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({ dailyLogs: state.dailyLogs, screenings: state.screenings, thoughts: state.thoughts, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "steady-backup-" + todayISO() + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+$("#importFile").addEventListener("change", (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (Array.isArray(data.dailyLogs)) state.dailyLogs = data.dailyLogs;
+      if (Array.isArray(data.screenings)) state.screenings = data.screenings;
+      if (Array.isArray(data.thoughts)) state.thoughts = data.thoughts;
+      persist();
+      renderDailyList(); renderScreeningList(); renderThoughtList(); renderTrends();
+    } catch (err) { alert("That file could not be read as a Steady backup."); }
+  };
+  reader.readAsText(file);
+});
+$("#clearBtn").addEventListener("click", () => { $("#clearConfirm").style.display = "flex"; });
+$("#clearNo").addEventListener("click", () => { $("#clearConfirm").style.display = "none"; });
+$("#clearYes").addEventListener("click", () => {
+  state.dailyLogs = []; state.screenings = []; state.thoughts = [];
+  persist();
+  $("#clearConfirm").style.display = "none";
+  renderDailyList(); renderScreeningList(); renderThoughtList(); renderTrends();
+});
+
+/* ---------- init ---------- */
+setActiveTab("today");
+populateDistortionSelect();
+renderMoodScale();
+renderActivityChips();
+renderDailyList();
+renderScreeningItems();
+renderScreeningList();
+renderThoughtList();
+renderTrends();
+</script>
+</body>
+</html>
