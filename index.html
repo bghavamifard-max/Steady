@@ -125,31 +125,33 @@
   <section class="view" id="view-today">
     <h2 class="section-title">How's today</h2>
     <div class="card">
-      <div class="field">
-        <label class="field-label">Overall, today</label>
-        <div class="scale" id="moodScale" data-testid="mood-scale"></div>
-        <div class="mood-caption"><span>1 · a hard day</span><span>5 · a great day</span></div>
-      </div>
-      <div class="field">
-        <label class="field-label">Notes (private, stays on this device)</label>
-        <textarea id="dailyNote" rows="3" placeholder="Anything worth remembering about today…"></textarea>
-      </div>
-      <div class="field">
-        <label class="field-label">Add an activity</label>
-        <div class="row">
-          <input type="text" id="activityText" placeholder="e.g. walk, call with a friend" />
-          <select id="activityTag" style="max-width:120px;">
-            <option value="pleasant">pleasant</option>
-            <option value="duty">duty</option>
-            <option value="neutral">neutral</option>
-          </select>
-        </div>
-        <button class="btn secondary full" id="addActivityBtn" style="margin-top:8px;">Add activity</button>
-        <div id="activityChips" style="margin-top:10px;"></div>
-      </div>
-      <button class="btn full" id="saveDailyBtn" data-testid="save-daily">Save today's entry</button>
+      <label class="field-label">Overall, today (saves instantly)</label>
+      <div class="scale" id="moodScale" data-testid="mood-scale"></div>
+      <div class="mood-caption"><span>1 · a hard day</span><span>5 · a great day</span></div>
     </div>
-    <h2 class="section-title">Past entries</h2>
+
+    <h2 class="section-title">Log an entry</h2>
+    <p class="lead">Add as many of these as you want through the day — each one is kept, nothing gets overwritten.</p>
+    <div class="card">
+      <div class="field">
+        <label class="field-label">Time (optional)</label>
+        <input type="text" id="entryTime" placeholder="e.g. 17:00" />
+      </div>
+      <div class="field">
+        <label class="field-label">Type</label>
+        <div class="scale" id="entryTagScale" data-testid="entry-tag-scale"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">What happened, how it felt</label>
+        <textarea id="entryText" rows="2" placeholder="e.g. walk in rain to the car — excited, relaxed"></textarea>
+      </div>
+      <button class="btn full" id="addEntryBtn" data-testid="add-entry">Add entry</button>
+    </div>
+
+    <h2 class="section-title">Today's entries</h2>
+    <div id="todayEntries"></div>
+
+    <h2 class="section-title">Past days</h2>
     <div id="dailyList"></div>
   </section>
 
@@ -168,19 +170,22 @@
 
   <section class="view" id="view-thoughts">
     <h2 class="section-title">Thought record</h2>
-    <p class="lead">Catch the automatic thought, check it against the evidence, write the tested response — once, while calm.</p>
+    <p class="lead">The two questions below are all you need for a quick entry. Expand for the full CBT structure when you want it.</p>
     <div class="card">
-      <div class="field"><label class="field-label">1. Situation / trigger</label><input type="text" id="tTrigger" /></div>
-      <div class="field"><label class="field-label">2. Automatic thought</label><input type="text" id="tThought" /></div>
-      <div class="field">
-        <label class="field-label">3. Distortion (optional)</label>
-        <select id="tDistortion"><option value="">— none selected —</option></select>
-        <div class="distortion-hint" id="distortionHint"></div>
-      </div>
-      <div class="field"><label class="field-label">4. Evidence for the thought</label><input type="text" id="tFor" /></div>
-      <div class="field"><label class="field-label">5. Evidence against it</label><input type="text" id="tAgainst" /></div>
-      <div class="field"><label class="field-label">6. Balanced alternative thought</label><input type="text" id="tBalanced" /></div>
-      <div class="field"><label class="field-label">7. Action you'll actually take</label><input type="text" id="tAction" /></div>
+      <div class="field"><label class="field-label">What happened?</label><input type="text" id="tTrigger" placeholder="Situation or trigger" /></div>
+      <div class="field"><label class="field-label">What went through your mind?</label><input type="text" id="tThought" placeholder="The automatic thought" /></div>
+      <details>
+        <summary style="cursor:pointer; color:var(--accent); font-size:0.9rem; margin-bottom:10px;">Want to go deeper? (optional)</summary>
+        <div class="field">
+          <label class="field-label">Distortion</label>
+          <select id="tDistortion"><option value="">— none selected —</option></select>
+          <div class="distortion-hint" id="distortionHint"></div>
+        </div>
+        <div class="field"><label class="field-label">Evidence for the thought</label><input type="text" id="tFor" /></div>
+        <div class="field"><label class="field-label">Evidence against it</label><input type="text" id="tAgainst" /></div>
+        <div class="field"><label class="field-label">Balanced alternative thought</label><input type="text" id="tBalanced" /></div>
+        <div class="field"><label class="field-label">Action you'll actually take</label><input type="text" id="tAction" /></div>
+      </details>
       <button class="btn full" id="saveThoughtBtn" data-testid="save-thought">Save thought record</button>
     </div>
     <h2 class="section-title">Past records</h2>
@@ -196,6 +201,11 @@
     <div class="chart-wrap">
       <h3>Daily mood</h3>
       <div id="moodChart"></div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Have-to vs. enjoyable, per day</h3>
+      <div id="balanceChart"></div>
+      <p class="small-note">Dark = have-to, light = enjoyable — from your logged entries.</p>
     </div>
     <h2 class="section-title">Your data</h2>
     <div class="card">
@@ -259,19 +269,45 @@ const DISTORTIONS = [
   { key: "labeling", label: "Labeling", hint: "One mistake becomes a fixed label about who you are." },
   { key: "personalizing", label: "Personalizing", hint: "Taking responsibility for something that wasn't fully yours to carry." },
 ];
+const TAG_LABELS = { H: "have-to", E: "enjoyable", N: "neutral" };
+function entriesForDate(logEntries, date) { return logEntries.filter((e) => e.date === date); }
+function activityBalance(logEntries) {
+  const byDate = {};
+  logEntries.forEach((e) => {
+    byDate[e.date] = byDate[e.date] || { date: e.date, H: 0, E: 0, N: 0 };
+    if (byDate[e.date][e.tag] != null) byDate[e.date][e.tag] += 1;
+  });
+  return sortByDateAsc(Object.values(byDate));
+}
+function migrateLegacyDailyLogs(dailyLogs, logEntries) {
+  const migratedEntries = [...logEntries];
+  const cleanedDailyLogs = [];
+  dailyLogs.forEach((d) => {
+    const isLegacy = "note" in d || "activities" in d;
+    if (!isLegacy) { cleanedDailyLogs.push(d); return; }
+    if (typeof d.mood === "number") cleanedDailyLogs.push({ id: d.id, date: d.date, mood: d.mood, createdAt: d.createdAt });
+    if (d.note) migratedEntries.push({ id: uid(), date: d.date, time: "", tag: "N", text: d.note, createdAt: d.createdAt || new Date().toISOString() });
+    (d.activities || []).forEach((a) => {
+      migratedEntries.push({ id: uid(), date: d.date, time: "", tag: a.tag === "pleasant" ? "E" : a.tag === "duty" ? "H" : "N", text: a.text, createdAt: d.createdAt || new Date().toISOString() });
+    });
+  });
+  return { dailyLogs: cleanedDailyLogs, logEntries: migratedEntries };
+}
 /* ===== end shared logic ===== */
 
 const store = makeStore(window.localStorage);
+const _migrated = migrateLegacyDailyLogs(store.load("steady.dailyLogs", []), store.load("steady.logEntries", []));
 const state = {
-  dailyLogs: store.load("steady.dailyLogs", []),
+  dailyLogs: _migrated.dailyLogs,
+  logEntries: _migrated.logEntries,
   screenings: store.load("steady.screenings", []),
   thoughts: store.load("steady.thoughts", []),
-  draftActivities: [],
-  draftMood: null,
+  draftEntryTag: "E",
 };
 
 function persist() {
   store.save("steady.dailyLogs", state.dailyLogs);
+  store.save("steady.logEntries", state.logEntries);
   store.save("steady.screenings", state.screenings);
   store.save("steady.thoughts", state.thoughts);
 }
@@ -292,60 +328,82 @@ $all("nav.tabbar button").forEach((btn) => btn.addEventListener("click", () => s
 $("#headerDate").textContent = fmtDate(todayISO());
 
 /* ---------- Today view ---------- */
+function todaysMood() {
+  const row = state.dailyLogs.find((d) => d.date === todayISO());
+  return row ? row.mood : null;
+}
+function saveMood(value) {
+  const date = todayISO();
+  const existing = state.dailyLogs.find((d) => d.date === date);
+  if (existing) state.dailyLogs = updateEntry(state.dailyLogs, existing.id, { mood: value });
+  else state.dailyLogs = addEntry(state.dailyLogs, { date, mood: value });
+  persist();
+  renderTrends();
+}
 function renderMoodScale() {
   const box = $("#moodScale");
+  const current = todaysMood();
   box.innerHTML = "";
   for (let i = 1; i <= 5; i++) {
     const b = document.createElement("button");
     b.type = "button"; b.textContent = i;
-    if (state.draftMood === i) b.classList.add("selected");
-    b.addEventListener("click", () => { state.draftMood = i; renderMoodScale(); });
+    if (current === i) b.classList.add("selected");
+    b.addEventListener("click", () => { saveMood(i); renderMoodScale(); });
     box.appendChild(b);
   }
 }
-function renderActivityChips() {
-  const box = $("#activityChips");
-  box.innerHTML = state.draftActivities.map((a, i) =>
-    `<span class="activity-chip">${esc(a.text)} · ${esc(a.tag)} <button data-i="${i}" class="rm-activity" style="border:none;background:none;color:var(--muted);cursor:pointer;">×</button></span>`
-  ).join("");
-  $all(".rm-activity", box).forEach((btn) => btn.addEventListener("click", () => {
-    state.draftActivities.splice(Number(btn.dataset.i), 1);
-    renderActivityChips();
+function renderEntryTagScale() {
+  const box = $("#entryTagScale");
+  box.innerHTML = "";
+  ["H","E","N"].forEach((tag) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = tag + " · " + TAG_LABELS[tag];
+    if (state.draftEntryTag === tag) b.classList.add("selected");
+    b.addEventListener("click", () => { state.draftEntryTag = tag; renderEntryTagScale(); });
+    box.appendChild(b);
+  });
+}
+function entryRowHTML(e) {
+  return `<div class="entry" data-id="${e.id}">
+    <div class="meta"><span>${e.time ? esc(e.time) + " · " : ""}${TAG_LABELS[e.tag] || e.tag}</span></div>
+    <div class="body">${esc(e.text)}</div>
+    <div class="actions"><button class="btn quiet rm-entry" data-id="${e.id}">Delete</button></div>
+  </div>`;
+}
+function wireEntryDeletes(box) {
+  $all(".rm-entry", box).forEach((btn) => btn.addEventListener("click", () => {
+    state.logEntries = removeEntry(state.logEntries, btn.dataset.id); persist();
+    renderTodayEntries(); renderDailyList(); renderTrends();
   }));
 }
-$("#addActivityBtn").addEventListener("click", () => {
-  const text = $("#activityText").value.trim();
+$("#addEntryBtn").addEventListener("click", () => {
+  const text = $("#entryText").value.trim();
   if (!text) return;
-  state.draftActivities.push({ text, tag: $("#activityTag").value });
-  $("#activityText").value = "";
-  renderActivityChips();
-});
-$("#saveDailyBtn").addEventListener("click", () => {
-  const date = todayISO();
-  const note = $("#dailyNote").value.trim();
-  const existing = state.dailyLogs.find((d) => d.date === date);
-  const payload = { date, mood: state.draftMood, note, activities: state.draftActivities.slice() };
-  if (existing) state.dailyLogs = updateEntry(state.dailyLogs, existing.id, payload);
-  else state.dailyLogs = addEntry(state.dailyLogs, payload);
+  const entry = { date: todayISO(), time: $("#entryTime").value.trim(), tag: state.draftEntryTag, text };
+  state.logEntries = addEntry(state.logEntries, entry);
   persist();
-  state.draftActivities = []; state.draftMood = null;
-  $("#dailyNote").value = "";
-  renderMoodScale(); renderActivityChips(); renderDailyList(); renderTrends();
+  $("#entryTime").value = ""; $("#entryText").value = "";
+  renderTodayEntries(); renderTrends();
 });
+function renderTodayEntries() {
+  const box = $("#todayEntries");
+  const list = entriesForDate(state.logEntries, todayISO());
+  if (!list.length) { box.innerHTML = '<div class="empty">Nothing logged yet today.</div>'; wireEntryDeletes(box); return; }
+  box.innerHTML = list.map(entryRowHTML).join("");
+  wireEntryDeletes(box);
+}
 function renderDailyList() {
   const box = $("#dailyList");
-  const list = sortByDateDesc(state.dailyLogs);
-  if (!list.length) { box.innerHTML = '<div class="empty">No entries yet — today\'s is a good place to start.</div>'; return; }
-  box.innerHTML = list.map((d) => `
-    <div class="entry" data-id="${d.id}">
-      <div class="meta"><span>${fmtDate(d.date)}</span><span>${d.mood ? "mood " + d.mood + "/5" : ""}</span></div>
-      <div class="body">${esc(d.note) || "<span style=color:var(--muted)>No notes</span>"}</div>
-      ${(d.activities||[]).length ? '<div style="margin-top:8px;">' + d.activities.map(a=>`<span class="activity-chip">${esc(a.text)} · ${esc(a.tag)}</span>`).join("") + '</div>' : ""}
-      <div class="actions"><button class="btn quiet rm-daily" data-id="${d.id}">Delete</button></div>
-    </div>`).join("");
-  $all(".rm-daily", box).forEach((btn) => btn.addEventListener("click", () => {
-    state.dailyLogs = removeEntry(state.dailyLogs, btn.dataset.id); persist(); renderDailyList(); renderTrends();
-  }));
+  const today = todayISO();
+  const otherDates = [...new Set(state.logEntries.filter((e) => e.date !== today).map((e) => e.date))];
+  if (!otherDates.length) { box.innerHTML = '<div class="empty">Earlier days will show up here.</div>'; return; }
+  const sortedDates = otherDates.sort().reverse();
+  box.innerHTML = sortedDates.map((date) => {
+    const dayMood = state.dailyLogs.find((d) => d.date === date);
+    const items = entriesForDate(state.logEntries, date).map(entryRowHTML).join("");
+    return `<h3 style="font-family:var(--serif); font-weight:400; font-size:0.98rem; margin:16px 0 8px;">${fmtDate(date)}${dayMood ? " · mood " + dayMood.mood + "/5" : ""}</h3>${items}`;
+  }).join("");
+  wireEntryDeletes(box);
 }
 
 /* ---------- Weekly screening view ---------- */
@@ -454,16 +512,42 @@ function lineChartSVG(points, opts) {
     <text x="${pad.l+w}" y="${height-4}" font-size="10" fill="var(--muted)" text-anchor="end">${lastLabel}</text>
   </svg>`;
 }
+function barChartSVG(points, opts) {
+  const { width = 460, height = 160 } = opts;
+  const pad = { l: 30, r: 12, t: 12, b: 24 };
+  const w = width - pad.l - pad.r, h = height - pad.t - pad.b;
+  if (!points.length) return '<div class="empty">Not enough entries yet to chart.</div>';
+  const n = points.length;
+  const maxVal = Math.max(1, ...points.map((p) => p.H + p.E));
+  const slot = w / n, barW = Math.min(28, slot * 0.55);
+  const bars = points.map((p, i) => {
+    const cx = pad.l + slot * (i + 0.5);
+    const hH = (p.H / maxVal) * h, hE = (p.E / maxVal) * h;
+    const yTopH = pad.t + h - hH;
+    const yTopE = yTopH - hE;
+    return `<rect x="${(cx-barW/2).toFixed(1)}" y="${yTopH.toFixed(1)}" width="${barW.toFixed(1)}" height="${hH.toFixed(1)}" fill="var(--accent)" />
+            <rect x="${(cx-barW/2).toFixed(1)}" y="${yTopE.toFixed(1)}" width="${barW.toFixed(1)}" height="${hE.toFixed(1)}" fill="var(--amber-line)" />`;
+  }).join("");
+  const firstLabel = fmtDate(points[0].date), lastLabel = fmtDate(points[n-1].date);
+  return `<svg class="chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet">
+    <line x1="${pad.l}" y1="${pad.t+h}" x2="${pad.l+w}" y2="${pad.t+h}" stroke="var(--line)" />
+    ${bars}
+    <text x="${pad.l}" y="${height-4}" font-size="10" fill="var(--muted)">${firstLabel}</text>
+    <text x="${pad.l+w}" y="${height-4}" font-size="10" fill="var(--muted)" text-anchor="end">${lastLabel}</text>
+  </svg>`;
+}
 function renderTrends() {
   const sPts = screeningTrendPoints(state.screenings);
   $("#screeningChart").innerHTML = lineChartSVG(sPts, { min: 0, max: 63, valueKey: "total" });
   const mPts = moodTrendPoints(state.dailyLogs);
   $("#moodChart").innerHTML = lineChartSVG(mPts, { min: 1, max: 5, valueKey: "mood" });
+  const bPts = activityBalance(state.logEntries);
+  $("#balanceChart").innerHTML = barChartSVG(bPts, {});
 }
 
 /* ---------- data export / import / clear ---------- */
 $("#exportBtn").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify({ dailyLogs: state.dailyLogs, screenings: state.screenings, thoughts: state.thoughts, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ dailyLogs: state.dailyLogs, logEntries: state.logEntries, screenings: state.screenings, thoughts: state.thoughts, exportedAt: new Date().toISOString() }, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = "steady-backup-" + todayISO() + ".json";
@@ -477,10 +561,11 @@ $("#importFile").addEventListener("change", (e) => {
     try {
       const data = JSON.parse(reader.result);
       if (Array.isArray(data.dailyLogs)) state.dailyLogs = data.dailyLogs;
+      if (Array.isArray(data.logEntries)) state.logEntries = data.logEntries;
       if (Array.isArray(data.screenings)) state.screenings = data.screenings;
       if (Array.isArray(data.thoughts)) state.thoughts = data.thoughts;
       persist();
-      renderDailyList(); renderScreeningList(); renderThoughtList(); renderTrends();
+      renderMoodScale(); renderTodayEntries(); renderDailyList(); renderScreeningList(); renderThoughtList(); renderTrends();
     } catch (err) { alert("That file could not be read as a Steady backup."); }
   };
   reader.readAsText(file);
@@ -488,17 +573,18 @@ $("#importFile").addEventListener("change", (e) => {
 $("#clearBtn").addEventListener("click", () => { $("#clearConfirm").style.display = "flex"; });
 $("#clearNo").addEventListener("click", () => { $("#clearConfirm").style.display = "none"; });
 $("#clearYes").addEventListener("click", () => {
-  state.dailyLogs = []; state.screenings = []; state.thoughts = [];
+  state.dailyLogs = []; state.logEntries = []; state.screenings = []; state.thoughts = [];
   persist();
   $("#clearConfirm").style.display = "none";
-  renderDailyList(); renderScreeningList(); renderThoughtList(); renderTrends();
+  renderMoodScale(); renderTodayEntries(); renderDailyList(); renderScreeningList(); renderThoughtList(); renderTrends();
 });
 
 /* ---------- init ---------- */
 setActiveTab("today");
 populateDistortionSelect();
 renderMoodScale();
-renderActivityChips();
+renderEntryTagScale();
+renderTodayEntries();
 renderDailyList();
 renderScreeningItems();
 renderScreeningList();
