@@ -246,6 +246,13 @@ function needsSafetyNote(scores) { return Array.isArray(scores) && clampScore(sc
 function addEntry(list, entry) { const withMeta = Object.assign({ id: uid(), createdAt: new Date().toISOString() }, entry); return [...list, withMeta]; }
 function updateEntry(list, id, patch) { return list.map((item) => (item.id === id ? Object.assign({}, item, patch, { updatedAt: new Date().toISOString() }) : item)); }
 function removeEntry(list, id) { return list.filter((item) => item.id !== id); }
+function mergeById(existingList, incomingList) {
+  const byId = new Map(existingList.map((item) => [item.id, item]));
+  (incomingList || []).forEach((item) => {
+    if (item && item.id != null) byId.set(item.id, Object.assign({}, byId.get(item.id), item));
+  });
+  return Array.from(byId.values());
+}
 function sortByDateDesc(list, dateKey = "date") { return [...list].sort((a, b) => (a[dateKey] < b[dateKey] ? 1 : a[dateKey] > b[dateKey] ? -1 : 0)); }
 function sortByDateAsc(list, dateKey = "date") { return [...list].sort((a, b) => (a[dateKey] > b[dateKey] ? 1 : a[dateKey] < b[dateKey] ? -1 : 0)); }
 function screeningTrendPoints(screenings) { return sortByDateAsc(screenings).map((s) => ({ date: s.date, total: computeTotal(s.scores) })); }
@@ -560,12 +567,13 @@ $("#importFile").addEventListener("change", (e) => {
   reader.onload = () => {
     try {
       const data = JSON.parse(reader.result);
-      if (Array.isArray(data.dailyLogs)) state.dailyLogs = data.dailyLogs;
-      if (Array.isArray(data.logEntries)) state.logEntries = data.logEntries;
-      if (Array.isArray(data.screenings)) state.screenings = data.screenings;
-      if (Array.isArray(data.thoughts)) state.thoughts = data.thoughts;
+      if (Array.isArray(data.dailyLogs)) state.dailyLogs = mergeById(state.dailyLogs, data.dailyLogs);
+      if (Array.isArray(data.logEntries)) state.logEntries = mergeById(state.logEntries, data.logEntries);
+      if (Array.isArray(data.screenings)) state.screenings = mergeById(state.screenings, data.screenings);
+      if (Array.isArray(data.thoughts)) state.thoughts = mergeById(state.thoughts, data.thoughts);
       persist();
       renderMoodScale(); renderTodayEntries(); renderDailyList(); renderScreeningList(); renderThoughtList(); renderTrends();
+      alert("Import complete — added to what was already here, nothing was overwritten.");
     } catch (err) { alert("That file could not be read as a Steady backup."); }
   };
   reader.readAsText(file);
